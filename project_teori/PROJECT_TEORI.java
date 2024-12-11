@@ -5,31 +5,77 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+abstract class KalkulatorBase {
+    private String nama;
+    private String versi;
+
+    public KalkulatorBase(String nama, String versi) {
+        this.nama = nama;
+        this.versi = versi;
+    }
+
+    public String getNama() {
+        return nama;
+    }
+
+    public void setNama(String nama) {
+        this.nama = nama;
+    }
+
+    public String getVersi() {
+        return versi;
+    }
+
+    public void setVersi(String versi) {
+        this.versi = versi;
+    }
+
+    public abstract void tampilkanJenis();
+}
+
+class KalkulatorSederhana extends KalkulatorBase {
+    public KalkulatorSederhana(String nama, String versi) {
+        super(nama, versi);
+    }
+
+    @Override
+    public void tampilkanJenis() {
+        System.out.println("Ini adalah Kalkulator Sederhana.");
+    }
+}
+
+class KalkulatorLanjutan extends KalkulatorBase {
+    public KalkulatorLanjutan(String nama, String versi) {
+        super(nama, versi);
+    }
+
+    @Override
+    public void tampilkanJenis() {
+        System.out.println("Ini adalah Kalkulator Lanjutan.");
+    }
+}
+
 public class Kalkulator extends JFrame implements ActionListener {
     private JTextField display;
     private StringBuilder input;
+    private static int operasiDihitung = 0;
 
     public Kalkulator() {
         input = new StringBuilder();
-
-        // Mengatur frame
-        setTitle("Kalkulator Sederhana");
+        setTitle("Kalkulator");
         setSize(400, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
 
-        // Membuat display (layar tampilan)
         display = new JTextField();
         display.setEditable(false);
         display.setFont(new Font("Arial", Font.BOLD, 24));
         display.setHorizontalAlignment(JTextField.RIGHT);
         add(display, BorderLayout.NORTH);
 
-        // Membuat panel tombol
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(4, 4, 5, 5));
 
-        // Menambahkan tombol
         String[] buttons = {
                 "7", "8", "9", "/",
                 "4", "5", "6", "*",
@@ -44,7 +90,6 @@ public class Kalkulator extends JFrame implements ActionListener {
             panel.add(button);
         }
 
-        // Menambahkan panel ke frame
         add(panel, BorderLayout.CENTER);
     }
 
@@ -52,39 +97,39 @@ public class Kalkulator extends JFrame implements ActionListener {
     public void actionPerformed(ActionEvent e) {
         String command = e.getActionCommand();
 
-        if (command.equals("C")) {
-            // Clear input
-            input.setLength(0);
-            display.setText("");
-        } else if (command.equals("=")) {
-            // Evaluasi ekspresi
-            try {
+        try {
+            if (command.equals("C")) {
+                input.setLength(0);
+                display.setText("");
+            } else if (command.equals("=")) {
                 if (input.length() == 0) {
                     display.setText("No Input");
                     return;
                 }
+
                 double result = eval(input.toString());
-                display.setText(String.valueOf(result));
+                if (result == (int) result) {
+                    display.setText(String.valueOf((int) result));
+                } else {
+                    display.setText(String.valueOf(result));
+                }
+
                 input.setLength(0);
                 input.append(result);
-            } catch (ArithmeticException ex) {
-                display.setText("Math Error");
-                input.setLength(0);
-            } catch (RuntimeException ex) {
-                display.setText("Invalid Expression");
-                input.setLength(0);
-            } catch (Exception ex) {
-                display.setText("Error");
-                input.setLength(0);
+                operasiDihitung++;
+            } else {
+                input.append(command);
+                display.setText(input.toString());
             }
-        } else {
-            // Menambahkan input ke layar
-            input.append(command);
-            display.setText(input.toString());
+        } catch (ArithmeticException ex) {
+            display.setText("Math Error");
+            input.setLength(0);
+        } catch (RuntimeException ex) {
+            display.setText("Invalid Input");
+            input.setLength(0);
         }
     }
 
-    // Fungsi untuk evaluasi ekspresi matematika
     private double eval(String expression) {
         return new Object() {
             int pos = -1, ch;
@@ -112,8 +157,8 @@ public class Kalkulator extends JFrame implements ActionListener {
             double parseExpression() {
                 double x = parseTerm();
                 for (;;) {
-                    if (eat('+')) x += parseTerm(); // Penjumlahan
-                    else if (eat('-')) x -= parseTerm(); // Pengurangan
+                    if (eat('+')) x += parseTerm();
+                    else if (eat('-')) x -= parseTerm();
                     else return x;
                 }
             }
@@ -121,22 +166,22 @@ public class Kalkulator extends JFrame implements ActionListener {
             double parseTerm() {
                 double x = parseFactor();
                 for (;;) {
-                    if (eat('*')) x *= parseFactor(); // Perkalian
-                    else if (eat('/')) x /= parseFactor(); // Pembagian
+                    if (eat('*')) x *= parseFactor();
+                    else if (eat('/')) x /= parseFactor();
                     else return x;
                 }
             }
 
             double parseFactor() {
-                if (eat('+')) return parseFactor(); // Unary plus
-                if (eat('-')) return -parseFactor(); // Unary minus
+                if (eat('+')) return parseFactor();
+                if (eat('-')) return -parseFactor();
 
                 double x;
                 int startPos = this.pos;
-                if (eat('(')) { // Kurung
+                if (eat('(')) {
                     x = parseExpression();
                     eat(')');
-                } else if ((ch >= '0' && ch <= '9') || ch == '.') { // Angka
+                } else if ((ch >= '0' && ch <= '9') || ch == '.') {
                     while ((ch >= '0' && ch <= '9') || ch == '.') nextChar();
                     x = Double.parseDouble(expression.substring(startPos, this.pos));
                 } else {
@@ -147,10 +192,27 @@ public class Kalkulator extends JFrame implements ActionListener {
         }.parse();
     }
 
+    public static int getOperasiDihitung() {
+        return operasiDihitung;
+    }
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            Kalkulator kalkulator = new Kalkulator();
-            kalkulator.setVisible(true);
-        });
+        try {
+            SwingUtilities.invokeLater(() -> {
+                Kalkulator kalkulator = new Kalkulator();
+                kalkulator.setVisible(true);
+            });
+
+            KalkulatorBase kalkulator1 = new KalkulatorSederhana("Kalkulator Sederhana", "1.0");
+            kalkulator1.tampilkanJenis();
+
+            KalkulatorBase kalkulator2 = new KalkulatorLanjutan("Kalkulator Lanjutan", "2.0");
+            kalkulator2.tampilkanJenis();
+
+            System.out.println("Total operasi dihitung: " + getOperasiDihitung());
+        } catch (Exception e) {
+            System.out.println("Terjadi kesalahan: " + e.getMessage());
+        }
     }
 }
+  
